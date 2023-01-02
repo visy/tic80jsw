@@ -1457,13 +1457,14 @@ rooms = {
 t=0
 x=96
 y=24
-xscroll = 0
+xscroll = -16
 yscroll = 0
-roomnumber = 33
+roomnumber = 9
 
 room = {
 	tilemap = {},
-	name = ""
+	name = "",
+	items = {}
 }
 
 -- set spritesheet pixel
@@ -1479,6 +1480,8 @@ function sget(x,y)
 end
 
 function loadroom(r)
+		room.items = {}
+
 		roomnumber = r
 		local offset = (256*roomnumber)+1
 	
@@ -1636,6 +1639,34 @@ function loadroom(r)
 	 -- 8x2b entities	
 	
 	 offset = offset+16
+		
+		-- room data done, process itemtable
+
+		-- find the items for this room
+		for ii = 0xad+1, 0xff+1,1 do
+
+			local first_item = ii
+			
+			local item_b1 = itemtable[first_item]
+			local item_b2 = itemtable[first_item+0x100]
+		
+			-- get only bits 8-13 for room#
+			local item_room	= item_b1 & 0x3f
+
+			-- bits 0-4
+			local rx = (item_b2 &	0x1f)-2
+			
+			-- bits 5-7 LSB
+			local ry = ((item_b2 & 0xe0)>>5)
+		 ry = ry+((item_b1 & 0x80)>>7)*8
+
+			if item_room == roomnumber then
+				local ritem = { x = rx, y = ry }
+				table.insert(room.items, ritem)
+			end
+		
+		end
+		
 end
 
 function draw()
@@ -1711,6 +1742,18 @@ function drawroom()
 			spr(4,xx+xscroll+x*8,yy+y*8)
 			y = y - 1
 		end
+	end
+
+	-- items
+	
+	for i = 1, #room.items do
+	 local item = room.items[i]
+		PALETTE_MAP = 0x3FF0
+		white = 15
+		poke4(PALETTE_MAP * 2 + white, 3+(time()*0.015+i)%4)
+		spr(6,item.x*8,item.y*8,0)
+		poke4(PALETTE_MAP * 2 + white, white)
+
 	end
 
  -- room name
