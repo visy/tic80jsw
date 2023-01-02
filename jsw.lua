@@ -1453,13 +1453,19 @@ rooms = {
 0x69, 0x17, 0x6e, 0x14, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 }
 
+player = {
+
+	x = 120,
+	y = 104,
+	dir = 0
+}
 
 t=0
 x=96
 y=24
 xscroll = -16
 yscroll = 0
-roomnumber = 9
+roomnumber = 0
 
 room = {
 	tilemap = {},
@@ -1481,6 +1487,7 @@ end
 
 function loadroom(r)
 		room.items = {}
+		room.entities = {}
 
 		roomnumber = r
 		local offset = (256*roomnumber)+1
@@ -1637,6 +1644,17 @@ function loadroom(r)
 	 offset = offset+3
 	
 	 -- 8x2b entities	
+
+		for ii = 0, 7 do
+			local e_type = rooms[offset+(ii*2)+0]
+			local e_data = rooms[offset+(ii*2)+1]
+
+			local e = {type = e_type, data = e_data }
+			
+			if (e_data > 0) then
+				table.insert(room.entities, e)
+			end
+		end
 	
 	 offset = offset+16
 		
@@ -1664,26 +1682,47 @@ function loadroom(r)
 				local ritem = { x = rx, y = ry }
 				table.insert(room.items, ritem)
 			end
+		end
+
+		-- load entities + gfx
+		for e = 1, #room.entities do
 		
+			local type = room.entities[e].type
+			local data = room.entities[e].data
+			
+			local entity_def = entities[(type*8)+1]
+			local entity_col = entities[(type*8)+2]
+			local entity_x = (data & 0xf)*8
+			local entity_y = entities[(type*8)+4]
+			local entity_ys = entities[(type*8)+5]
+			local entity_sprp = entities[(type*8)+6]
+			local entity_min = entities[1+(type*8)+7]
+			local entity_max = entities[1+(type*8)+8]
+
+			room.entities[e].x = entity_x
+			room.entities[e].y = entity_y
+
 		end
 		
+
 end
 
 function draw()
 	drawroom()
 	drawplayer()
+--	drawentities()
 	drawconveyor()
 end
 
-player = {
-
-	x = 120,
-	y = 104,
-	dir = 0
-}
-
 function drawplayer()
 	spr(32,player.x,player.y,0,1,player.dir,0,1,2)
+end
+
+function drawentities()
+	for i = 1, #room.entities do
+		local e = room.entities[i]
+		rect(e.x,e.y,16,16,15)
+	end
 end
 
 function drawconveyor()
