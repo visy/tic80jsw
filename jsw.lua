@@ -1470,7 +1470,10 @@ player = {
 
 	x = 120,
 	y = 104,
-	dir = 0
+	dir = 0,
+	moving=false,
+	frame = 0,
+	animdt = 0
 }
 
 t=0
@@ -1760,6 +1763,10 @@ function loadroom(r)
 				room.entities[e].max = (room.entities[e].max*8)
 				room.entities[e].x = data*8
 				room.entities[e].y = entity_y>>1
+				
+				if room.entities[e].x > room.entities[e].max then
+					room.entities[e].x = room.entities[e].max
+				end
 			end
 
 			-- vertical			
@@ -1805,7 +1812,37 @@ function tickentities(dt)
 	end
 end
 
+function tickplayer(dt)
+	player.moving = false
+
+	if btn(2) then player.dir = 1 player.x = player.x - 1*dt*0.03 player.animdt = player.animdt+dt player.moving = true end
+	if btn(3) then player.dir = 0 player.x = player.x + 1*dt*0.03 player.animdt = player.animdt+dt player.moving = true end 
+
+	if btnp(4) then roomnumber = roomnumber - 1 
+		if roomnumber < 0 then roomnumber = 0 end
+		loadroom(roomnumber) 
+	end
+
+	if btnp(5) then roomnumber = roomnumber + 1 
+		if roomnumber > 60 then roomnumber = 60 end
+		loadroom(roomnumber) 
+	end
+
+	if (player.moving) then
+		player.animdt = player.animdt + dt
+		
+		if (player.animdt > 240) then
+			player.animdt = 0
+			player.frame = player.frame + 1
+			if player.frame > 3 then
+			 player.frame = 0
+			end
+		end
+	end
+end
+
 function update(dt)
+	tickplayer(dt)
 	tickentities(dt)
 end
 
@@ -1817,7 +1854,26 @@ function draw()
 end
 
 function drawplayer()
-	spr(32,player.x,player.y,0,1,player.dir,0,1,2)
+	local o = 1+player.dir*128+player.frame*32
+	for y = 0, 15 do
+		for x = 0, 7 do
+		 local cc = 0
+			cc = (willy_gfx[o] & 1<<(7-x))>>7-x
+			sset((32*8)+x,y,cc*15)
+		end
+
+		o = o + 1
+
+		for x = 0,7 do
+			local cc = 0
+			cc = (willy_gfx[o] & 1<<(7-x))>>7-x
+			sset((32*8)+8+x,y,cc*15)
+		end
+
+		o = o + 1
+	end
+	spr(32,player.x-(player.frame*2),player.y,0,1,0,0,2,2)
+
 end
 
 function drawentities(dt)
@@ -1962,20 +2018,6 @@ pt=0
 dt=0
 
 function TIC()
-
-	if btn(2) then player.dir = 1 player.x = player.x - 1 end
-	if btn(3) then player.dir = 0 player.x = player.x + 1 end 
-
-	if btnp(4) then roomnumber = roomnumber - 1 
-		if roomnumber < 0 then roomnumber = 0 end
-		loadroom(roomnumber) 
-	end
-
-	if btnp(5) then roomnumber = roomnumber + 1 
-		if roomnumber > 60 then roomnumber = 60 end
-		loadroom(roomnumber) 
-	end
-
 	dt = time()-pt
 	pt=time()
 
@@ -1987,12 +2029,12 @@ end
 -- 002:ccccceee8888cceeaaaa0cee888a0ceeccca0ccc0cca0c0c0cca0c0c0cca0c0c
 -- 003:eccccccccc888888caaaaaaaca888888cacccccccacccccccacc0ccccacc0ccc
 -- 004:ccccceee8888cceeaaaa0cee888a0ceeccca0cccccca0c0c0cca0c0c0cca0c0c
+-- 014:0077770000777700077777700077070000777770007777000007700000777700
 -- 017:cacccccccaaaaaaacaaacaaacaaaaccccaaaaaaac8888888cc000cccecccccec
 -- 018:ccca00ccaaaa0ccecaaa0ceeaaaa0ceeaaaa0cee8888ccee000cceeecccceeee
 -- 019:cacccccccaaaaaaacaaacaaacaaaaccccaaaaaaac8888888cc000cccecccccec
 -- 020:ccca00ccaaaa0ccecaaa0ceeaaaa0ceeaaaa0cee8888ccee000cceeecccceeee
--- 032:0077770000777700077777700077070000777770007777000007700000777700
--- 048:0777777007777770777707777777707700777700077707700770777007770777
+-- 030:0777777007777770777707777777707700777700077707700770777007770777
 -- </TILES>
 
 -- <WAVES>
