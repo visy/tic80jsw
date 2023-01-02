@@ -1678,12 +1678,11 @@ function loadroom(r)
 		for ii = 0, 7 do
 			local e_type = rooms[offset+(ii*2)+0]
 			local e_data = rooms[offset+(ii*2)+1]
+			if e_type == 0xff then break end
 
 			local e = {type = e_type, data = e_data }
 			
-			if (e_data > 0) then
-				table.insert(room.entities, e)
-			end
+			table.insert(room.entities, e)
 		end
 	
 	 offset = offset+16
@@ -1822,7 +1821,6 @@ function drawplayer()
 end
 
 function drawentities(dt)
-
 	for i = 1, #room.entities do
 		local e = room.entities[i]
 		local o = (e.page*0x100)+1+e.sprite_base*32
