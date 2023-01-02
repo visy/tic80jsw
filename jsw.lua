@@ -2,6 +2,19 @@
 -- author:  visy / matthew smith
 -- desc:    jet set willy tic-80
 
+local debug = false
+
+foot_gfx = {
+	0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x20,0x80,
+	0x20,0x80,0x48,0x42,0x88,0x35,0x84,0x09,0x80,0x01,0x80,0x02,0x43,0x8D,0x3C,0x76
+}
+
+barrel_gfx = {
+0x37,0xEC,0x77,0xEE,0x00,0x00,0x6F,0xF6,0xEF,0xF7,0xEF,0xF7,0xD5,0x5B,0xDB,0xBB,
+0xD5,0x5B,0xDF,0xFB,0xED,0x77,0xEE,0xF7,0x6D,0x76,0x00,0x00,0x77,0xEE,0x37,0xEC
+}
+
+
 entities = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x22, 0x00, 0x00, 0x20, 0x00, 0x83, 0x36,
 0x02, 0x24, 0x00, 0x80, 0x02, 0xbf, 0x50, 0xd0, 0x02, 0x2a, 0x00, 0xa0, 0x04, 0xbf, 0x58, 0xd0,
@@ -1485,6 +1498,23 @@ function sget(x,y)
     return peek4(addr*2+x%8+y%8*8) -- get sprite pixel
 end
 
+function bytes2uint(str)
+    local uint = 0
+    for i = 1, #str do
+        uint = uint + str:byte(i) * 0x100^(i-1)
+    end
+    return uint
+end
+
+function bytes2int(str)
+    local uint = bytes2uint(str)
+    local max = 0x100 ^ #str
+    if uint >= max / 2 then
+        return uint - max
+    end
+    return uint
+end
+
 function loadroom(r)
 		room.items = {}
 		room.entities = {}
@@ -1692,36 +1722,155 @@ function loadroom(r)
 			
 			local entity_def = entities[(type*8)+1]
 			local entity_col = entities[(type*8)+2]
-			local entity_x = (data & 0xf)*8
 			local entity_y = entities[(type*8)+4]
-			local entity_ys = entities[(type*8)+5]
-			local entity_sprp = entities[(type*8)+6]
-			local entity_min = entities[1+(type*8)+7]
-			local entity_max = entities[1+(type*8)+8]
+			local entity_step = entities[(type*8)+5]
+			local entity_page = entities[(type*8)+6]-0xab
+			local entity_min = entities[(type*8)+7]
+			local entity_max = entities[(type*8)+8]
 
-			room.entities[e].x = entity_x
-			room.entities[e].y = entity_y
+			room.entities[e].min = entity_min
+			room.entities[e].max = entity_max
+	
+			local gtype = entity_def & 0x07
 
+			room.entities[e].guardian_type = gtype
+			local base = ((data & 0xe0)>>5)
+
+   room.entities[e].sprite_base=base
+			
+			room.entities[e].start_frame = (entity_def & 0x60)>>5
+			room.entities[e].ink = (entity_col & 0x7) + (8*((entity_col & 0x8)>>3))
+			room.entities[e].frame_mask = (entity_col & 0xe0)>>5
+
+			room.entities[e].page = entity_page
+
+			-- horizontal guardians just have 1
+			if (gtype == 1) then
+				local dir = (entity_def & 0x80)>>7
+				room.entities[e].dir = dir
+
+				if (dir == 0) then 
+					room.entities[e].step = -1
+				end
+
+				if (dir == 1) then 
+					room.entities[e].step = 1
+				end
+
+				room.entities[e].min = (room.entities[e].min*8)
+				room.entities[e].max = (room.entities[e].max*8)
+				room.entities[e].x = data*8
+				room.entities[e].y = entity_y>>1
+			end
+
+			-- vertical			
+			if (gtype == 2) then
+				if entity_step > 127 then
+					room.entities[e].step = -(256-entity_step)
+				else
+					room.entities[e].step = entity_step
+				end
+
+				room.entities[e].x = (data & 0x1f)*8
+				room.entities[e].y = entity_y>>1
+
+				room.entities[e].min = entity_min>>1
+				room.entities[e].max = entity_max>>1
+
+			end
+			
+			room.entities[e].acc = 0
 		end
-		
+end
 
+function tickentities(dt)
+	for i = 1, #room.entities do
+		local e = room.entities[i]
+		e.acc = e.acc+dt
+
+		if (e.acc > 16) then
+
+			if e.guardian_type == 1 then
+				if (e.x+e.step > e.max) then e.step = -e.step end
+				if (e.x < e.min) then e.step = -e.step end
+				e.x = e.x+e.step
+			end
+	
+			if e.guardian_type == 2 then
+				if (e.y+e.step > e.max) then e.step = -e.step end
+				if (e.y < e.min) then e.step = -e.step end
+				e.y = e.y+(e.step*0.125)
+			end
+			e.acc = 0
+		end
+	end
+end
+
+function update(dt)
+	tickentities(dt)
 end
 
 function draw()
 	drawroom()
+	drawentities()
 	drawplayer()
---	drawentities()
-	drawconveyor()
+ drawconveyor()
 end
 
 function drawplayer()
 	spr(32,player.x,player.y,0,1,player.dir,0,1,2)
 end
 
-function drawentities()
+function drawentities(dt)
+
 	for i = 1, #room.entities do
 		local e = room.entities[i]
-		rect(e.x,e.y,16,16,15)
+		local o = (e.page*0x100)+1+e.sprite_base*32
+
+		if (e.page == 0x9c-0xab) then
+		 o = 1
+		end
+
+		if e.guardian_type == 1 or e.guardian_type == 2 then
+			
+			for y = 0, 15 do
+				for x = 0, 7 do
+				 local cc = 0
+					if (e.page == 0x9c-0xab) then
+						cc = (barrel_gfx[o]	& 1<<(7-x))>>7-x
+					else
+						cc = (guardian_gfx[o] & 1<<(7-x))>>7-x
+					end
+
+					sset((64*8)+x,y,cc*15)
+				end
+
+				o = o + 1
+
+				for x = 0,7 do
+					local cc = 0
+
+					if (e.page == 0x9c-0xab) then
+						cc = (barrel_gfx[o]	& 1<<(7-x))>>7-x
+					else
+					cc = (guardian_gfx[o] & 1<<(7-x))>>7-x
+					end
+
+					sset((64*8)+8+x,y,cc*15)
+				end
+
+				o = o + 1
+			end
+
+			PALETTE_MAP = 0x3FF0
+			white = 15
+			poke4(PALETTE_MAP * 2 + white, e.ink)
+			spr(64,e.x-16,e.y,0,1,0,0,2,2)
+	
+			poke4(PALETTE_MAP * 2 + white, white)
+
+	 	--rect(e.x-16,e.y,16,16,e.ink)
+  end
 	end
 end
 
@@ -1796,29 +1945,45 @@ function drawroom()
 	end
 
  -- room name
-	
-	print(room.name,0,130,1)
-	print(room.name,1,130,15)
+
+	local title = room.name
+
+ if debug	== true then
+		title = title .. " ent: " .. #room.entities
+ end
+
+	print(title,0,130,1)
+	print(title,1,130,15)
 end
 
 cls()
 loadroom(roomnumber)
+
+
+pt=0
+dt=0
 
 function TIC()
 
 	if btn(2) then player.dir = 1 player.x = player.x - 1 end
 	if btn(3) then player.dir = 0 player.x = player.x + 1 end 
 
-	if btnp(4) then roomnumber = roomnumber - 1 loadroom(roomnumber) end
-	if btnp(5) then roomnumber = roomnumber + 1 loadroom(roomnumber) end
+	if btnp(4) then roomnumber = roomnumber - 1 
+		if roomnumber < 0 then roomnumber = 0 end
+		loadroom(roomnumber) 
+	end
 
-	if roomnumber < 0 then roomnumber = 0 end
+	if btnp(5) then roomnumber = roomnumber + 1 
+		if roomnumber > 60 then roomnumber = 60 end
+		loadroom(roomnumber) 
+	end
 
+	dt = time()-pt
+	pt=time()
+
+	update(dt)
 	draw()
 end
-
-
-
 -- <TILES>
 -- 001:eccccccccc888888caaaaaaaca888888cacccccccacc0ccccacc0ccccacc0ccc
 -- 002:ccccceee8888cceeaaaa0cee888a0ceeccca0ccc0cca0c0c0cca0c0c0cca0c0c
