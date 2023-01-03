@@ -1467,10 +1467,13 @@ rooms = {
 }
 
 player = {
-
-	x = 170,
+	jumpframe=0,
+	jumpdt=0,
+	start_y = 0,
+	jumping=false,
+	x = 160,
 	y = 104,
-	dir = 1,
+	dir = 0,
 	moving=false,
 	frame = 0,
 	animdt = 0,
@@ -1816,7 +1819,7 @@ function tickentities(dt)
 
 		e.animt = e.animt+dt
 		
-		if (e.animt > 90) then
+		if (e.animt > 70) then
 			e.animt = 0
 			e.frame = e.frame+1
 			if (e.frame > #e.anim_frames-1) then
@@ -1830,10 +1833,10 @@ function tickentities(dt)
 	
 		e.acc = e.acc+dt
 
-		if (e.acc > 16) then
+		if (e.acc > 24) then
 			if e.guardian_type == 1 then
-				if (e.x+e.step > e.max) then e.step = -e.step end
-				if (e.x < e.min) then e.step = -e.step end
+				if (e.x+e.step > e.max) then e.step = -e.step if e.dir == 0 then e.dir = 1 elseif e.dir == 1 then e.dir = 0 end end
+				if (e.x < e.min) then e.step = -e.step if e.dir == 0 then e.dir = 1 elseif e.dir == 1 then e.dir = 0 end end
 				e.x = e.x+e.step
 			end
 	
@@ -1858,7 +1861,29 @@ function tickentities(dt)
 	end
 end
 
+jumptable = {
+ 0,2,4,6,8,10,12,14,16,17,18,19,19,20,20,20,20,20,19,19,18,17,15,13,11,9,7,5,3,1,0
+}
+
+function jump(dt)
+	if (player.jumping) then
+		player.jumpdt = player.jumpdt + dt
+		if player.jumpdt>32 then
+			player.jumpdt = 0
+			player.jumpframe = player.jumpframe+1
+			if (player.jumpframe > #jumptable-1) then
+				player.jumpframe = 0
+				player.jumping = false
+			end
+			player.y = player.start_y-jumptable[player.jumpframe+1]
+		end
+	end
+	 
+end
+
 function tickplayer(dt)
+	jump(dt)
+	
 	player.moving = false
 
 	if btn(2) then 
@@ -1892,30 +1917,28 @@ function tickplayer(dt)
 
 	-- room change
 
-	if (player.x < -4) then
+	if (player.x < 0) then
 		roomnumber = room.exit_l
 		loadroom(roomnumber)
-		player.x = 248
+		player.x = 244
 		xscrollf = -24
 		xscroll = -24
 	end
 
-	if (player.x > 240+12) then
+	if (player.x > 240+8) then
 		roomnumber = room.exit_r
 		loadroom(roomnumber)
-		player.x = 0
+		player.x = 4
 		xscrollf = 8
 		xscroll = 8
 	end
 
-	if btnp(4) then 
-	xscroll = xscroll - 1
+	if btn(4) then 
+		if (player.jumping == false) then
+			player.jumping = true
+			player.start_y = player.y
+		end
 	end
-
-	if btnp(5) then 
-	xscroll = xscroll + 1
-	end
-	
 
 	if btnp(6) then roomnumber = roomnumber - 1 
 		if roomnumber < 0 then roomnumber = 0 end
@@ -1930,7 +1953,7 @@ function tickplayer(dt)
 	if (player.moving) then
 		player.animdt = player.animdt + dt
 		
-		if (player.animdt > 240) then
+		if (player.animdt > 120) then
 			player.animdt = 0
 			player.frame = player.frame + 1
 			if player.frame > 3 then
@@ -1958,7 +1981,7 @@ function drawplayer()
 		for x = 0, 7 do
 		 local cc = 0
 			cc = (willy_gfx[o] & 1<<(7-x))>>7-x
-			sset((32*8)+x,y,cc*15)
+			sset((32*8)+x,y,cc*7)
 		end
 
 		o = o + 1
@@ -1966,7 +1989,7 @@ function drawplayer()
 		for x = 0,7 do
 			local cc = 0
 			cc = (willy_gfx[o] & 1<<(7-x))>>7-x
-			sset((32*8)+8+x,y,cc*15)
+			sset((32*8)+8+x,y,cc*7)
 		end
 
 		o = o + 1
@@ -2056,8 +2079,15 @@ function drawentities(dt)
 
 			end
 
+			if (e.guardian_type == 1) then 
+
+				if e.dir == 0 then spr(64,xscroll+e.x+xo,e.y,0,1,1-e.dir,0,2,2)
+				else
+				spr(64,xscroll+e.x-xo,e.y,0,1,1-e.dir,0,2,2)
+				end
+			else
 			spr(64,xscroll+e.x-xo,e.y,0,1,0,0,2,2)
-	
+			end
 			poke4(PALETTE_MAP * 2 + white, white)
 
 		 if debug	== true then
