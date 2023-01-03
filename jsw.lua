@@ -1473,7 +1473,8 @@ player = {
 	dir = 0,
 	moving=false,
 	frame = 0,
-	animdt = 0
+	animdt = 0,
+	lives = 8
 }
 
 t=0
@@ -1517,6 +1518,18 @@ function bytes2int(str)
     end
     return uint
 end
+
+-- mask to frames
+anim_frames = {
+	{0},
+	{0,1},
+	{0,0,2,2},
+	{0,1,2,3},
+	{0,0,0,0,4,4,4,4},
+	{0,1,0,1,4,5,4,5},
+	{0,0,2,2,4,4,6,6},
+	{0,1,2,3,4,5,6,7}
+}
 
 function loadroom(r)
 		room.items = {}
@@ -1563,8 +1576,6 @@ function loadroom(r)
 	 	text = text .. chara
 	 end
 	 
-	 text = text .. roomnumber
-
 		room.name = text
 
 	 offset = offset+32
@@ -1736,13 +1747,21 @@ function loadroom(r)
 			local gtype = entity_def & 0x07
 
 			room.entities[e].guardian_type = gtype
-			local base = ((data & 0xe0)>>5)
+			local base = ((data & 0xe0))>>5
 
    room.entities[e].sprite_base=base
 			
 			room.entities[e].start_frame = (entity_def & 0x60)>>5
+			room.entities[e].frame = (entity_def & 0x60)>>5
 			room.entities[e].ink = (entity_col & 0x7) + (8*((entity_col & 0x8)>>3))
-			room.entities[e].frame_mask = (entity_col & 0xe0)>>5
+
+			room.entities[e].animt = 0
+			
+			local frame_mask = (entity_col & 0xe0)>>5
+			room.entities[e].frame_mask = frame_mask
+
+			-- todo: update frames
+			room.entities[e].anim_frames = anim_frames[frame_mask+1]
 
 			room.entities[e].page = entity_page
 
@@ -1795,6 +1814,16 @@ function tickentities(dt)
 		e.acc = e.acc+dt
 
 		if (e.acc > 16) then
+
+			e.animt = e.animt+1
+			
+			if (e.animt > 4) then
+				e.animt = 0
+				e.frame = e.frame+1
+				if (e.frame > #e.anim_frames-1) then
+					e.frame = 0
+				end
+			end
 
 			if e.guardian_type == 1 then
 				if (e.x+e.step > e.max) then e.step = -e.step end
@@ -1879,7 +1908,28 @@ end
 function drawentities(dt)
 	for i = 1, #room.entities do
 		local e = room.entities[i]
-		local o = (e.page*0x100)+1+e.sprite_base*32
+
+		--offset to data
+
+		local o = (e.page*0x100)+1
+		
+		if (e.anim_frames[(e.frame+1)] > 0) then
+
+			local f = e.frame
+				if #e.anim_frames == 8 then
+
+					f = f % 4
+					if e.step > 0 then
+					f = f + 4
+					end
+
+				end
+
+			local or_frame = e.sprite_base | e.anim_frames[(f+1)]
+			o = o + or_frame*32
+		else
+			o = o + e.sprite_base*32
+		end
 
 		if (e.page == 0x9c-0xab) then
 		 o = 1
@@ -1919,7 +1969,20 @@ function drawentities(dt)
 			PALETTE_MAP = 0x3FF0
 			white = 15
 			poke4(PALETTE_MAP * 2 + white, e.ink)
-			spr(64,e.x-16,e.y,0,1,0,0,2,2)
+			local xo = 0
+			
+			if (e.guardian_type == 1) then
+
+				if (#e.anim_frames == 8) then
+				xo = ((e.frame%4)*2)
+				else
+				xo = (e.frame*2)
+
+				end
+
+			end
+
+			spr(64,e.x-16-xo,e.y,0,1,0,0,2,2)
 	
 			poke4(PALETTE_MAP * 2 + white, white)
 
@@ -2006,8 +2069,18 @@ function drawroom()
 		title = title .. " ent: " .. #room.entities
  end
 
-	print(title,0,130,1)
-	print(title,1,130,15)
+	print(title,1,129,14)
+
+	for i = 0,player.lives-1 do
+		PALETTE_MAP = 0x3FF0
+		white = 15
+		poke4(PALETTE_MAP * 2 + white, 1+i%6)
+		spr(14,(170+i*7),129,0,1,0,0,2,1)
+		poke4(PALETTE_MAP * 2 + white, white)
+	end
+
+	rectb(0,128,240,8,room.border)
+
 end
 
 cls()
@@ -2029,12 +2102,12 @@ end
 -- 002:ccccceee8888cceeaaaa0cee888a0ceeccca0ccc0cca0c0c0cca0c0c0cca0c0c
 -- 003:eccccccccc888888caaaaaaaca888888cacccccccacccccccacc0ccccacc0ccc
 -- 004:ccccceee8888cceeaaaa0cee888a0ceeccca0cccccca0c0c0cca0c0c0cca0c0c
--- 014:0077770000777700077777700077070000777770007777000007700000777700
+-- 014:00ffff0000ffff000ffffff000ff0f0000fffff000ffff00000ff00000ffff00
 -- 017:cacccccccaaaaaaacaaacaaacaaaaccccaaaaaaac8888888cc000cccecccccec
 -- 018:ccca00ccaaaa0ccecaaa0ceeaaaa0ceeaaaa0cee8888ccee000cceeecccceeee
 -- 019:cacccccccaaaaaaacaaacaaacaaaaccccaaaaaaac8888888cc000cccecccccec
 -- 020:ccca00ccaaaa0ccecaaa0ceeaaaa0ceeaaaa0cee8888ccee000cceeecccceeee
--- 030:0777777007777770777707777777707700777700077707700770777007770777
+-- 030:0ffffff00ffffff0ffff0ffffffff0ff00ffff000fff0ff00ff0fff00fff0fff
 -- </TILES>
 
 -- <WAVES>
