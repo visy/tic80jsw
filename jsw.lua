@@ -1471,7 +1471,8 @@ player = {
 	jumpdt=0,
 	start_y = 0,
 	jumping=false,
-	x = 160,
+	falling=false,
+	x = 162,
 	y = 104,
 	dir = 0,
 	moving=false,
@@ -1480,13 +1481,10 @@ player = {
 	lives = 8
 }
 
-t=0
-x=96
-y=24
 xscroll = 0
 xscrollf = 0.0
 yscroll = 0
-roomnumber = 1
+roomnumber = 33
 
 room = {
 	tilemap = {},
@@ -1564,8 +1562,11 @@ function loadroom(r)
 			if pair == 3 then
 				tile = tbyte & 0x03
 			end
-	
 			table.insert(tilemap,tile)
+		end
+
+		for i=0,80 do
+			table.insert(tilemap,0)
 		end
 
 		room.tilemap = tilemap
@@ -1856,7 +1857,8 @@ function tickentities(dt)
 		end
 		
 		if (e.guardian_type == 1) then
-			e.hx = e.x-20
+			
+			e.hx = e.x-20+(1-e.dir)*8
 			e.hy = e.y
 		end
 
@@ -1922,6 +1924,28 @@ function tickplayer(dt)
 
 	end
 
+	if (player.falling or player.jumping) then
+		if (player.falling) then
+			player.y = player.y + 0.04*dt
+		end
+		local oo = math.floor((player.y+16)/8)*32+math.floor(player.x/8)
+		if oo > #room.tilemap-1 then oo = #room.tilemap-1 end
+		if (room.tilemap[oo+1] > 0) then
+			player.y = math.floor((oo/32)-2)*8
+			player.falling=false
+			player.jumping=false
+			player.jumpframe = 0
+
+		end
+	else
+		local oo = math.floor((player.y+16)/8)*32+math.floor((player.x+8*player.dir)/8)
+		if oo > #room.tilemap-1 then oo = #room.tilemap-1 end
+		if (room.tilemap[oo+1] == 0) then
+			player.falling=true
+		end
+
+	end
+
 	-- room change
 
 	if (player.x < 0) then
@@ -1940,10 +1964,24 @@ function tickplayer(dt)
 		xscroll = 8
 	end
 
+	if (player.y > 128-16) then
+		roomnumber = room.exit_d
+		loadroom(roomnumber)
+		player.y = 4
+	end
+
 	if btn(4) then 
-		if (player.jumping == false) then
+		if (player.jumping == false and player.falling == false) then
+
+			local oo = math.floor((player.y-8)/8)*32+math.floor((player.x+8*player.dir)/8)
+			if oo > #room.tilemap-1 then oo = #room.tilemap-1 end
+			if (room.tilemap[oo+1] == 0) then
 			player.jumping = true
 			player.start_y = player.y
+
+			end
+
+
 		end
 	end
 
@@ -2004,7 +2042,10 @@ function drawplayer()
 	spr(32,xscroll+player.x-(player.frame*2),player.y,0,1,0,0,2,2)
 
  if debug	== true then
-		rectb(xscroll+player.x+player.dir*2,player.y,8,16,6)
+		local co = 6
+		if (player.falling) then co = 3 end
+		if (player.jumping) then co = 4 end
+		rectb(xscroll+player.x+player.dir*2,player.y,8,16,co)
  end
 
 end
