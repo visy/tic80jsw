@@ -1486,7 +1486,7 @@ y=24
 xscroll = 0
 xscrollf = 0.0
 yscroll = 0
-roomnumber = 33
+roomnumber = 1
 
 room = {
 	tilemap = {},
@@ -1787,6 +1787,13 @@ function loadroom(r)
 				room.entities[e].max = (room.entities[e].max*8)
 				room.entities[e].x = data*8
 				room.entities[e].y = entity_y>>1
+
+				if(#room.entities[e].anim_frames == 8) then
+					room.entities[e].frame = 4
+				else
+					room.entities[e].frame = 0
+				end
+
 				
 				if room.entities[e].x > room.entities[e].max then
 					room.entities[e].x = room.entities[e].max
@@ -2014,12 +2021,7 @@ function drawentities(dt)
 
 			local f = e.frame
 			if #e.anim_frames == 8 then
-
-				if e.step >= 0 then
-					f = 4+e.frame % 4
-				else
-					f = e.frame % 4
-				end
+					f = e.frame
 			end
 
 			local or_frame = e.sprite_base | e.anim_frames[(f+1)]
