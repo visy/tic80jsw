@@ -1468,9 +1468,9 @@ rooms = {
 
 player = {
 
-	x = 120,
+	x = 170,
 	y = 104,
-	dir = 0,
+	dir = 1,
 	moving=false,
 	frame = 0,
 	animdt = 0,
@@ -1480,7 +1480,8 @@ player = {
 t=0
 x=96
 y=24
-xscroll = -16
+xscroll = 0
+xscrollf = 0.0
 yscroll = 0
 roomnumber = 33
 
@@ -1532,6 +1533,7 @@ anim_frames = {
 }
 
 function loadroom(r)
+		cls(0)
 		room.items = {}
 		room.entities = {}
 
@@ -1842,21 +1844,85 @@ function tickentities(dt)
 			end
 			e.acc = 0
 		end
+		
+		if (e.guardian_type == 1) then
+			e.hx = e.x-20
+			e.hy = e.y
+		end
+
+		if (e.guardian_type == 2) then
+			e.hx = e.x-16
+			e.hy = e.y
+		end
+
 	end
 end
 
 function tickplayer(dt)
 	player.moving = false
 
-	if btn(2) then player.dir = 1 player.x = player.x - 1*dt*0.03 player.animdt = player.animdt+dt player.moving = true end
-	if btn(3) then player.dir = 0 player.x = player.x + 1*dt*0.03 player.animdt = player.animdt+dt player.moving = true end 
+	if btn(2) then 
+		player.dir = 1 
+		player.x = player.x - dt*0.03 
+		player.animdt = player.animdt+dt 
+		player.moving = true 	
 
-	if btnp(4) then roomnumber = roomnumber - 1 
+		if (player.x < 128-16) then
+			xscrollf = xscrollf + 0.02*dt
+			if (xscrollf > 8) then xscrollf = 8 end
+		 xscroll = math.floor(xscrollf)
+		end
+
+	end
+
+	if btn(3) then 
+		player.dir = 0 
+		player.x = player.x + dt*0.03 
+		player.animdt = player.animdt+dt 
+		player.moving = true 	
+
+		if (player.x > 128+16) then
+			xscrollf = xscrollf - 0.02*dt
+			if (xscrollf < -24) then xscrollf = -24 end
+
+		 xscroll = math.floor(xscrollf)
+		end
+
+	end
+
+	-- room change
+
+	if (player.x < -4) then
+		roomnumber = room.exit_l
+		loadroom(roomnumber)
+		player.x = 248
+		xscrollf = -24
+		xscroll = -24
+	end
+
+	if (player.x > 240+12) then
+		roomnumber = room.exit_r
+		loadroom(roomnumber)
+		player.x = 0
+		xscrollf = 8
+		xscroll = 8
+	end
+
+	if btnp(4) then 
+	xscroll = xscroll - 1
+	end
+
+	if btnp(5) then 
+	xscroll = xscroll + 1
+	end
+	
+
+	if btnp(6) then roomnumber = roomnumber - 1 
 		if roomnumber < 0 then roomnumber = 0 end
 		loadroom(roomnumber) 
 	end
 
-	if btnp(5) then roomnumber = roomnumber + 1 
+	if btnp(7) then roomnumber = roomnumber + 1 
 		if roomnumber > 60 then roomnumber = 60 end
 		loadroom(roomnumber) 
 	end
@@ -1905,7 +1971,11 @@ function drawplayer()
 
 		o = o + 1
 	end
-	spr(32,player.x-(player.frame*2),player.y,0,1,0,0,2,2)
+	spr(32,xscroll+player.x-(player.frame*2),player.y,0,1,0,0,2,2)
+
+ if debug	== true then
+		rectb(xscroll+player.x+player.dir*2,player.y,8,16,6)
+ end
 
 end
 
@@ -1986,11 +2056,14 @@ function drawentities(dt)
 
 			end
 
-			spr(64,e.x-16-xo,e.y,0,1,0,0,2,2)
+			spr(64,xscroll+e.x-xo,e.y,0,1,0,0,2,2)
 	
 			poke4(PALETTE_MAP * 2 + white, white)
 
-	 	--rect(e.x-16,e.y,16,16,e.ink)
+		 if debug	== true then
+		 	rectb(xscroll+e.hx+16,e.hy,16,16,2)
+			end
+
   end
 	end
 end
@@ -2007,7 +2080,7 @@ function drawconveyor()
 end
 
 function drawroom()
-	cls(0)
+	rect(0,0,240,128,room.border)
  -- tile gfx defined, draw room
 	for i=0,511 do
 		local tile = room.tilemap[i+1]
@@ -2060,7 +2133,7 @@ function drawroom()
 		PALETTE_MAP = 0x3FF0
 		white = 15
 		poke4(PALETTE_MAP * 2 + white, 3+(time()*0.015+i)%4)
-		spr(6,item.x*8,item.y*8,0)
+		spr(6,xscroll+16+item.x*8,item.y*8,0)
 		poke4(PALETTE_MAP * 2 + white, white)
 
 	end
@@ -2070,10 +2143,8 @@ function drawroom()
 	local title = room.name
 
  if debug	== true then
-		title = title .. " ent: " .. #room.entities
+--		title = title .. " ent: " .. #
  end
-
-	print(title,1,129,14)
 
 	for i = 0,player.lives-1 do
 		PALETTE_MAP = 0x3FF0
@@ -2084,6 +2155,9 @@ function drawroom()
 	end
 
 	rectb(0,128,240,8,room.border)
+
+	print(title,2,129,14)
+
 
 end
 
