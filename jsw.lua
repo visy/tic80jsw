@@ -1977,7 +1977,7 @@ function tickplayer(dt)
 
 		end
 	else
-		local oo = math.floor((player.y+16)/8)*32+math.floor((player.x+8*player.dir)/8)
+		local oo = math.floor((player.y+16)/8)*32+math.floor((player.x+4*player.dir)/8)
 		if (room.tilemap[oo+1] == 0) then
 			player.falling=true
 		end
@@ -2025,14 +2025,9 @@ function tickplayer(dt)
 				xxx = -8
 			end
 			
-			local oo = math.floor((player.y-16)/8)*32+math.floor((player.x-8-xxx)/8)
-			local oo2 = math.floor((player.y-16)/8)*32+math.floor((player.x-xxx)/8)
-			if oo > #room.tilemap-1 then oo = #room.tilemap-1 end
-			if (room.tilemap[oo+1] == 0 and room.tilemap[oo2+1] == 0) then
 			player.jumping = true
 			player.start_y = player.y
 
-			end
 
 
 		end
