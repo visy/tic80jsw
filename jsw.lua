@@ -1482,7 +1482,7 @@ x=96
 y=24
 xscroll = -16
 yscroll = 0
-roomnumber = 0
+roomnumber = 33
 
 room = {
 	tilemap = {},
@@ -1811,20 +1811,24 @@ end
 function tickentities(dt)
 	for i = 1, #room.entities do
 		local e = room.entities[i]
-		e.acc = e.acc+dt
 
-		if (e.acc > 16) then
-
-			e.animt = e.animt+1
-			
-			if (e.animt > 4) then
-				e.animt = 0
-				e.frame = e.frame+1
-				if (e.frame > #e.anim_frames-1) then
+		e.animt = e.animt+dt
+		
+		if (e.animt > 90) then
+			e.animt = 0
+			e.frame = e.frame+1
+			if (e.frame > #e.anim_frames-1) then
+				if(#e.anim_frames == 8) then
+					e.frame = 4
+				else
 					e.frame = 0
 				end
 			end
+		end
+	
+		e.acc = e.acc+dt
 
+		if (e.acc > 16) then
 			if e.guardian_type == 1 then
 				if (e.x+e.step > e.max) then e.step = -e.step end
 				if (e.x < e.min) then e.step = -e.step end
@@ -1916,14 +1920,14 @@ function drawentities(dt)
 		if (e.anim_frames[(e.frame+1)] > 0) then
 
 			local f = e.frame
-				if #e.anim_frames == 8 then
+			if #e.anim_frames == 8 then
 
-					f = f % 4
-					if e.step > 0 then
-					f = f + 4
-					end
-
+				if e.step >= 0 then
+					f = 4+e.frame % 4
+				else
+					f = e.frame % 4
 				end
+			end
 
 			local or_frame = e.sprite_base | e.anim_frames[(f+1)]
 			o = o + or_frame*32
