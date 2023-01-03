@@ -1649,6 +1649,26 @@ function loadroom(r)
 		room.ramp_pos = ramp_pos
 		room.ramp_dir = ramp_dir
 		room.ramp_len = ramp_len	
+
+		local xx = (room.ramp_pos % 32)
+		local yy = math.floor(room.ramp_pos/32)
+	
+		if (room.ramp_dir == 0) then
+		 local y = 0
+			room.tilemap[40] = 2
+			for x = 0, room.ramp_len-1, 1 do
+				room.tilemap[(yy-y)*32+(xx-x+1)] = 5
+				y = y + 1
+			end
+		end
+		
+		if (room.ramp_dir == 1) then
+			local y = 0
+			for x = 0, room.ramp_len-1 do
+				room.tilemap[(yy+y)*32+(xx+x+1)] = 5
+				y = y - 1
+			end
+		end
 	
 	 offset = offset+4
 	
@@ -1928,18 +1948,36 @@ function tickplayer(dt)
 		if (player.falling) then
 			player.y = player.y + 0.04*dt
 		end
-		local oo = math.floor((player.y+16)/8)*32+math.floor(player.x/8)
-		if oo > #room.tilemap-1 then oo = #room.tilemap-1 end
-		if (room.tilemap[oo+1] > 0) then
-			player.y = math.floor((oo/32)-2)*8
-			player.falling=false
-			player.jumping=false
-			player.jumpframe = 0
+		
+		local xxx = -8
+		
+		local oo = math.floor((player.y+16)/8)*32+math.floor((player.x-xxx)/8)
+		local oo2 = math.floor((player.y+16)/8)*32+math.floor((player.x-8-xxx)/8)
+
+		local s = false
+		local s2 = false
+		
+		if (oo+1 >= 1) then 
+			s = (room.tilemap[oo+1] > 0) 
+		end
+
+		if (oo2+1 >= 1) then 
+		 s2 = (room.tilemap[oo2+1] > 0)
+		end
+
+		if s or s2 then
+			if (player.falling) then
+				player.y = math.floor((oo/32)-2)*8
+				player.falling=false
+			end
+			if (player.jumpframe > 14) then
+				player.jumping=false
+				player.jumpframe = 0
+			end
 
 		end
 	else
 		local oo = math.floor((player.y+16)/8)*32+math.floor((player.x+8*player.dir)/8)
-		if oo > #room.tilemap-1 then oo = #room.tilemap-1 end
 		if (room.tilemap[oo+1] == 0) then
 			player.falling=true
 		end
@@ -1970,12 +2008,27 @@ function tickplayer(dt)
 		player.y = 4
 	end
 
+	if (player.y < 0) then
+		roomnumber = room.exit_u
+		loadroom(roomnumber)
+		player.y = 128-16
+		player.jumping = false
+	end
+
 	if btn(4) then 
 		if (player.jumping == false and player.falling == false) then
-
-			local oo = math.floor((player.y-8)/8)*32+math.floor((player.x+8*player.dir)/8)
+			local xxx = 0
+			
+			if (player.dir == 0) then
+				xxx = -8
+			else
+				xxx = -8
+			end
+			
+			local oo = math.floor((player.y-16)/8)*32+math.floor((player.x-8-xxx)/8)
+			local oo2 = math.floor((player.y-16)/8)*32+math.floor((player.x-xxx)/8)
 			if oo > #room.tilemap-1 then oo = #room.tilemap-1 end
-			if (room.tilemap[oo+1] == 0) then
+			if (room.tilemap[oo+1] == 0 and room.tilemap[oo2+1] == 0) then
 			player.jumping = true
 			player.start_y = player.y
 
