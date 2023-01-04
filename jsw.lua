@@ -2,7 +2,7 @@
 -- author:  visy / matthew smith
 -- desc:    jet set willy tic-80
 
-local debug = false
+local debug = true
 
 foot_gfx = {
 	0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x20,0x80,
@@ -1472,19 +1472,20 @@ player = {
 	start_y = 0,
 	jumping=false,
 	falling=false,
-	x = 164,
-	y = 104,
+	x = 44,
+	y = 24,
 	dir = 0,
 	moving=false,
 	frame = 0,
 	animdt = 0,
-	lives = 8
+	lives = 8,
+	items = 0
 }
 
 xscroll = 0
 xscrollf = 0.0
 yscroll = 0
-roomnumber = 33
+roomnumber = 0x14
 
 room = {
 	tilemap = {},
@@ -1503,6 +1504,9 @@ end
 
 function takeitem(id)
 	itemtable[1+id] = itemtable[1+id] | 0x40
+	player.items = player.items+1
+	
+	cls(0)
 end
 
 -- set spritesheet pixel
@@ -1930,12 +1934,16 @@ function jump(dt)
 				player.jumping = false
 			end
 			player.y = player.start_y-jumptable[player.jumpframe+1]
-			
-			local xxx = -8
-			local head_x = math.floor((player.x-xxx*player.dir)/8)
-		 local head_y = math.floor((player.y)/8)
 
-			if (tile(head_x,head_y) == 2) then
+			local xxx = 1
+
+			if (player.dir == 0) then			
+			 xxx = 1
+			else
+			 xxx = -1
+			end
+
+			if (tile(player.head_x,player.head_y) == 2 or tile(player.head_x-xxx,player.head_y) == 2) then
 				player.jumping=false
 				player.jumpframe=0
 				player.falling=true
@@ -1955,23 +1963,28 @@ function coll(x,y)
 end
 
 function tickplayer(dt)
+	local tile_x = math.floor((8*(1-player.dir)+player.x+player.dir*2)/8)
+ local tile_y = math.floor((player.y+16)/8)
+
+	local head_x = math.floor((8*(1-player.dir)+player.x+player.dir*2)/8)
+ local head_y = math.floor((player.y)/8)
+
+	player.tile_x = tile_x
+	player.tile_y = tile_y
+	player.head_x = head_x
+	player.head_y = head_y
+
 	jump(dt)
 	
 	player.moving = false
 
-	local xxx = -8+(1-player.dir)
-
-	local tile_x = math.floor((player.x-xxx)/8)
- local tile_y = math.floor((player.y+16)/8)
-
-	local head_x = math.floor((player.x-xxx*player.dir)/8)
- local head_y = math.floor((player.y)/8)
 
 	if btn(2) then 
 		player.dir = 1 
 		
-		local tt = tile(head_x-1,head_y)
-  local cc = tt~=2
+		local tt = tile(head_x,head_y)
+		local tt2 = tile(head_x,head_y)
+  local cc = tt~=2 and tt~=2
 		
 		if (cc == true) then
  		player.x = player.x - dt*0.03 
@@ -1990,7 +2003,7 @@ function tickplayer(dt)
 	if btn(3) then 
 		player.dir = 0 
 
-		local tt = tile(head_x+1,head_y)
+		local tt = tile(head_x,head_y)
   local cc = tt~=2
 		
 		if (cc == true) then
@@ -2009,6 +2022,8 @@ function tickplayer(dt)
 
 	end
 
+	-- fallin'
+
 	if (player.falling or player.jumping) then
 		if (player.falling) then
 			player.y = player.y + 0.04*dt
@@ -2017,7 +2032,7 @@ function tickplayer(dt)
 		local s = false
 		local s2 = false
 
-			s = coll(tile_x,tile_y)
+		s = coll(tile_x,tile_y)
 
 		if s==false then
 			if (player.falling) then
@@ -2065,7 +2080,7 @@ function tickplayer(dt)
 	if (player.y < 0) then
 		roomnumber = room.exit_u
 		loadroom(roomnumber)
-		player.y = 128-16
+		player.y = 128-24
 		player.jumping = false
 	end
 
@@ -2082,15 +2097,9 @@ function tickplayer(dt)
 			local tt = 0
 			local tt2 = 0
 
-			if player.dir == 0 then
 				tt = tile(head_x,head_y-1)
-				tt2 = tile(head_x+1,head_y-1)
-			else
-				tt = tile(head_x,head_y-1)
-				tt2 = tile(head_x-1,head_y-1)
-			end
 
-			if tt == 0 and tt2 == 0 then
+			if (tt == 0 or tt == 1 or head_y<1) then
 			player.jumping = true
 			player.jumpframe = 0
 			player.start_y = player.y
@@ -2177,6 +2186,9 @@ function drawplayer()
 		if (player.falling) then co = 3 end
 		if (player.jumping) then co = 4 end
 		rectb(xscroll+player.x+player.dir*2,player.y,8,16,co)
+
+		rectb(xscroll+player.tile_x*8,player.tile_y*8,8,8,5)
+		rectb(xscroll+player.head_x*8,player.head_y*8,8,8,2)
  end
 
 end
@@ -2290,7 +2302,21 @@ function drawconveyor()
 			end
 		end
 	end
+end
 
+characterWidth={}
+for i=32,126 do
+	local char=string.char(i)
+	characterWidth[char]=print(char,0,1)
+end
+
+function cprint(s,x,y,c)
+	print(s,x,y)
+	local sum=0
+	for i=1,#s do
+		local add=characterWidth[string.sub(s,i,i)]
+		sum=sum+add
+	end
 end
 
 function drawroom()
@@ -2354,24 +2380,22 @@ function drawroom()
 	end
 
  -- room name
-
+																					
 	local title = room.name
+
+	title = string.gsub(title, '^%s*(.-)%s*$', '%1')
 
  if debug	== true then
 --		title = title .. " ent: " .. #
  end
-
-	for i = 0,player.lives-1 do
-		PALETTE_MAP = 0x3FF0
-		white = 15
-		poke4(PALETTE_MAP * 2 + white, 1+i%6)
-		spr(14,(170+i*7),129,0,1,0,0,2,1)
-		poke4(PALETTE_MAP * 2 + white, white)
-	end
-
+	spr(14,190,129,0,1,0,0,2,15)
+	print(player.lives,198,129,7)
 	rectb(0,128,240,8,room.border)
 
-	print(title,2,129,14)
+	print(title,2,129,9)
+	print(title,3,129,6)
+
+	print("I:" .. player.items,210,129,7)
 
 
 end
