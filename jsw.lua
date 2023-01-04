@@ -1472,8 +1472,8 @@ player = {
 	start_y = 0,
 	jumping=false,
 	falling=false,
-	x = 222,
-	y = 24,
+	x = 164,
+	y = 104,
 	dir = 0,
 	moving=false,
 	frame = 0,
@@ -1484,7 +1484,7 @@ player = {
 xscroll = 0
 xscrollf = 0.0
 yscroll = 0
-roomnumber = 34
+roomnumber = 33
 
 room = {
 	tilemap = {},
@@ -1492,6 +1492,18 @@ room = {
 	items = {},
 	tilecolors = {}
 }
+
+collected = {
+
+}
+
+function itemexist(id)
+ return (itemtable[1+id] & 0x40) == 0
+end
+
+function takeitem(id)
+	itemtable[1+id] = itemtable[1+id] | 0x40
+end
 
 -- set spritesheet pixel
 function sset(x,y,c)
@@ -1741,6 +1753,7 @@ function loadroom(r)
 		
 		-- room data done, process itemtable
 
+
 		-- find the items for this room
 		for ii = 0xad+1, 0xff+1,1 do
 
@@ -1760,11 +1773,11 @@ function loadroom(r)
 		 ry = ry+((item_b1 & 0x80)>>7)*8
 
 			if item_room == roomnumber then
-				local ritem = { x = rx, y = ry }
+				local ritem = { x = rx, y = ry, id = ii-1 }
 				table.insert(room.items, ritem)
 			end
 		end
-
+		
 		-- load entities + gfx
 		for e = 1, #room.entities do
 		
@@ -2108,6 +2121,22 @@ function tickplayer(dt)
 			end
 		end
 	end
+	
+	-- item collection
+	
+	for i = 1, #room.items do
+	 local item = room.items[i]
+		if (itemexist(item.id)) then
+
+			local hx = math.floor((player.x-12)/8)
+			local hy = math.floor(player.y/8)
+		
+			if (hx == item.x and (hy == item.y or hy == item.y-1)) then
+				takeitem(item.id)
+			end
+		end
+	end	
+	
 end
 
 function update(dt)
@@ -2315,12 +2344,13 @@ function drawroom()
 	
 	for i = 1, #room.items do
 	 local item = room.items[i]
-		PALETTE_MAP = 0x3FF0
-		white = 15
-		poke4(PALETTE_MAP * 2 + white, 3+(time()*0.015+i)%4)
-		spr(6,xscroll+16+item.x*8,item.y*8,0)
-		poke4(PALETTE_MAP * 2 + white, white)
-
+		if (itemexist(item.id)) then
+			PALETTE_MAP = 0x3FF0
+			white = 15
+			poke4(PALETTE_MAP * 2 + white, 3+(time()*0.015+i)%4)
+			spr(6,xscroll+16+item.x*8,item.y*8,0)
+			poke4(PALETTE_MAP * 2 + white, white)
+		end
 	end
 
  -- room name
