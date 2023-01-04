@@ -2,7 +2,7 @@
 -- author:  visy / matthew smith
 -- desc:    jet set willy tic-80
 
-local debug = true
+local debug = false
 
 foot_gfx = {
 	0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x10,0x80,0x20,0x80,
@@ -1485,7 +1485,7 @@ player = {
 xscroll = 0
 xscrollf = 0.0
 yscroll = 0
-roomnumber = 0x14
+roomnumber = 33
 
 room = {
 	tilemap = {},
@@ -1963,7 +1963,7 @@ function coll(x,y)
 end
 
 function tickplayer(dt)
-	local tile_x = math.floor((8*(1-player.dir)+player.x+player.dir*2)/8)
+	local tile_x = math.floor((4*(1-player.dir)+player.x+player.dir*2)/8)
  local tile_y = math.floor((player.y+16)/8)
 
 	local head_x = math.floor((8*(1-player.dir)+player.x+player.dir*2)/8)
@@ -2046,7 +2046,7 @@ function tickplayer(dt)
 
  end
 
-	s = coll(tile_x-(1-player.dir),tile_y)
+	s = coll(tile_x,tile_y)
 
 	if (s == true and (player.jumpframe > 14 or player.jumping == false)) then
 		player.falling=true
@@ -2099,7 +2099,7 @@ function tickplayer(dt)
 
 				tt = tile(head_x,head_y-1)
 
-			if (tt == 0 or tt == 1 or head_y<1) then
+			if (tt == 0 or tt == 1 or tt==5 or head_y<1) then
 			player.jumping = true
 			player.jumpframe = 0
 			player.start_y = player.y
