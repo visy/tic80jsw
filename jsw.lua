@@ -1489,7 +1489,8 @@ roomnumber = 33
 room = {
 	tilemap = {},
 	name = "",
-	items = {}
+	items = {},
+	tilecolors = {}
 }
 
 -- set spritesheet pixel
@@ -1595,6 +1596,8 @@ function loadroom(r)
 			local paper = ((cbyte)>>3)
 			local ink = (cbyte & 0x0f)
 	
+			table.insert(room.tilecolors,ink)
+	
 			i = i + 1
 	 	for y=0,7 do
 				local pbyte = rooms[offset+i]
@@ -1629,6 +1632,15 @@ function loadroom(r)
 		room.conv_pos = conv_pos
 		room.conv_len = conv_len
 		room.conv_dir = conv_dir
+
+	 local xx = (room.conv_pos % 32)
+		local yy = math.floor(room.conv_pos/32)
+		for j = 0, room.conv_len-1 do
+			local x = xx+j
+			local y = yy
+				room.tilemap[y*32+x+1] = 5
+		end
+
 	
 	 offset = offset+4
 	
@@ -1910,14 +1922,36 @@ function jump(dt)
 	 
 end
 
+function tile(x,y)
+	return room.tilemap[y*32+x+1]
+end
+
+function coll(x,y)
+	return tile(x,y) == 0
+end
+
 function tickplayer(dt)
 	jump(dt)
 	
 	player.moving = false
 
+	local xxx = -8+(1-player.dir)
+
+	local tile_x = math.floor((player.x-xxx)/8)
+ local tile_y = math.floor((player.y+16)/8)
+
+	local head_x = math.floor((player.x-xxx*player.dir)/8)
+ local head_y = math.floor((player.y)/8)
+
 	if btn(2) then 
 		player.dir = 1 
-		player.x = player.x - dt*0.03 
+		
+		local tt = tile(head_x-1,head_y)
+  local cc = tt~=2
+		
+		if (cc == true) then
+ 		player.x = player.x - dt*0.03 
+		end 
 		player.animdt = player.animdt+dt 
 		player.moving = true 	
 
@@ -1931,7 +1965,14 @@ function tickplayer(dt)
 
 	if btn(3) then 
 		player.dir = 0 
-		player.x = player.x + dt*0.03 
+
+		local tt = tile(head_x+1,head_y)
+  local cc = tt~=2
+		
+		if (cc == true) then
+ 		player.x = player.x + dt*0.03 
+		end 
+  
 		player.animdt = player.animdt+dt 
 		player.moving = true 	
 
@@ -1948,41 +1989,30 @@ function tickplayer(dt)
 		if (player.falling) then
 			player.y = player.y + 0.04*dt
 		end
-		
-		local xxx = -8
-		
-		local oo = math.floor((player.y+16)/8)*32+math.floor((player.x-xxx)/8)
-		local oo2 = math.floor((player.y+16)/8)*32+math.floor((player.x-8-xxx)/8)
 
 		local s = false
 		local s2 = false
-		
-		if (oo+1 >= 1) then 
-			s = (room.tilemap[oo+1] > 0) 
-		end
 
-		if (oo2+1 >= 1) then 
-		 s2 = (room.tilemap[oo2+1] > 0)
-		end
+		s = coll(tile_x,tile_y) and coll(tile_x-1,tile_y)
 
-		if s or s2 then
+		if s==false then
 			if (player.falling) then
-				player.y = math.floor((oo/32)-2)*8
 				player.falling=false
+				if (s == true) then player.y=(tile_y-2)*8 end
 			end
 			if (player.jumpframe > 14) then
 				player.jumping=false
-				player.jumpframe = 0
 			end
-
-		end
-	else
-		local oo = math.floor((player.y+16)/8)*32+math.floor((player.x+4*player.dir)/8)
-		if (room.tilemap[oo+1] == 0) then
-			player.falling=true
 		end
 
+ end
+
+	s = coll(tile_x,tile_y)
+
+	if (s == true and player.jumpframe > 14) then
+		player.falling=true
 	end
+
 
 	-- room change
 
@@ -2024,10 +2054,23 @@ function tickplayer(dt)
 			else
 				xxx = -8
 			end
-			
-			player.jumping = true
-			player.start_y = player.y
 
+			local tt = 0
+			local tt2 = 0
+
+			if player.dir == 0 then
+				tt = tile(head_x,head_y-1)
+				tt2 = tile(head_x+1,head_y-1)
+			else
+				tt = tile(head_x,head_y-1)
+				tt2 = tile(head_x-1,head_y-1)
+			end
+
+			if tt == 0 and tt2 == 0 then
+			player.jumping = true
+			player.jumpframe = 0
+			player.start_y = player.y
+			end
 
 
 		end
@@ -2195,7 +2238,17 @@ function drawconveyor()
  local xx = (room.conv_pos % 32)*8
 	local yy = math.floor(room.conv_pos/32)*8
 	for j = 0, room.conv_len-1 do
-		spr(5,xx+j*8+xscroll,yy)
+		for yi = 0, 7 do
+			for xi = 0, 7 do
+				local x = xx+j*8+xscroll+xi
+				local y = yy+yi
+				local ink = room.tilecolors[6]
+				local p = pix(x,y)
+				pix(x,y,p & ink)
+				p = pix(x,y)
+				if (p == 0) then pix(x,y,sget(5*8+xi,yi)) end
+			end
+		end
 	end
 
 end
