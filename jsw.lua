@@ -1472,8 +1472,8 @@ player = {
 	start_y = 0,
 	jumping=false,
 	falling=false,
-	x = 162,
-	y = 104,
+	x = 222,
+	y = 24,
 	dir = 0,
 	moving=false,
 	frame = 0,
@@ -1484,7 +1484,7 @@ player = {
 xscroll = 0
 xscrollf = 0.0
 yscroll = 0
-roomnumber = 33
+roomnumber = 34
 
 room = {
 	tilemap = {},
@@ -1917,6 +1917,17 @@ function jump(dt)
 				player.jumping = false
 			end
 			player.y = player.start_y-jumptable[player.jumpframe+1]
+			
+			local xxx = -8
+			local head_x = math.floor((player.x-xxx*player.dir)/8)
+		 local head_y = math.floor((player.y)/8)
+
+			if (tile(head_x,head_y) == 2) then
+				player.jumping=false
+				player.jumpframe=0
+				player.falling=true
+			end
+
 		end
 	end
 	 
@@ -1993,12 +2004,12 @@ function tickplayer(dt)
 		local s = false
 		local s2 = false
 
-		s = coll(tile_x,tile_y) and coll(tile_x-1,tile_y)
+			s = coll(tile_x,tile_y)
 
 		if s==false then
 			if (player.falling) then
 				player.falling=false
-				if (s == true) then player.y=(tile_y-2)*8 end
+				player.y=math.floor(player.y/8)*8
 			end
 			if (player.jumpframe > 14) then
 				player.jumping=false
@@ -2007,9 +2018,9 @@ function tickplayer(dt)
 
  end
 
-	s = coll(tile_x,tile_y)
+	s = coll(tile_x-(1-player.dir),tile_y)
 
-	if (s == true and player.jumpframe > 14) then
+	if (s == true and (player.jumpframe > 14 or player.jumping == false)) then
 		player.falling=true
 	end
 
