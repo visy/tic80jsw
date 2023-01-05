@@ -1466,14 +1466,22 @@ rooms = {
 0x69, 0x17, 0x6e, 0x14, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 }
 
+richman = {
+0x56,0x60,0x56,0x60,0x66,0x66,0x80,0x80,0x80,0x80,0x66,0x60,0x56,0x60,0x56,0x60, 	
+0x66,0x60,0x56,0x4C,0x48,0x4C,0x48,0x4C,0x56,0x56,0x56,0x56,0x56,0x56,0x56,0x56, 	
+0x40,0x40,0x40,0x40,0x44,0x44,0x4C,0x4C,0x56,0x60,0x66,0x60,0x56,0x56,0x66,0x66, 	
+0x51,0x56,0x60,0x56,0x51,0x51,0x60,0x60,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40 	
+}
+
 player = {
 	jumpframe=0,
 	jumpdt=0,
 	start_y = 0,
 	jumping=false,
 	falling=false,
-	x = 44,
-	y = 24,
+	fallframes=0,
+	x = 164,
+	y = 104,
 	dir = 0,
 	moving=false,
 	frame = 0,
@@ -1505,6 +1513,7 @@ end
 function takeitem(id)
 	itemtable[1+id] = itemtable[1+id] | 0x40
 	player.items = player.items+1
+	sfx(1,50,16,2,15,0)
 	
 	cls(0)
 end
@@ -1935,6 +1944,8 @@ function jump(dt)
 			end
 			player.y = player.start_y-jumptable[player.jumpframe+1]
 
+			sfx(3,40+jumptable[player.jumpframe+1],3,2,3,0)
+
 			local xxx = 1
 
 			if (player.dir == 0) then			
@@ -1947,6 +1958,7 @@ function jump(dt)
 				player.jumping=false
 				player.jumpframe=0
 				player.falling=true
+				player.fallframes=0
 			end
 
 		end
@@ -2027,6 +2039,11 @@ function tickplayer(dt)
 	if (player.falling or player.jumping) then
 		if (player.falling) then
 			player.y = player.y + 0.04*dt
+			player.fallframes=player.fallframes+1
+
+			if (player.jumping == false and player.fallframes > 32) then
+ 			sfx(3,40+jumptable[10-((math.floor(player.y)>>2)&0x7)],3,2,3,0)
+			end
 		end
 
 		local s = false
@@ -2048,8 +2065,9 @@ function tickplayer(dt)
 
 	s = coll(tile_x,tile_y)
 
-	if (s == true and (player.jumpframe > 14 or player.jumping == false)) then
+	if (player.falling == false and s == true and (player.jumpframe > 14 or player.jumping == false)) then
 		player.falling=true
+		player.fallframes = 0
 	end
 
 
@@ -2148,9 +2166,27 @@ function tickplayer(dt)
 	
 end
 
+mus=1
+musdt =0
+must = 0
+function tickmusic(dt)
+	local note = richman[mus]
+
+	must = must + 1
+	sfx(0,(player.lives+70)-(note>>2),2,0,15*must % 4,3)
+
+	musdt = musdt + dt
+	if musdt > 170 then
+		mus = mus + 1
+		if (mus > #richman-1) then mus = 1 end
+		musdt = 0
+	end
+end
+
 function update(dt)
 	tickplayer(dt)
 	tickentities(dt)
+	tickmusic(dt)
 end
 
 function draw()
@@ -2428,13 +2464,16 @@ end
 -- </TILES>
 
 -- <WAVES>
--- 000:00000000ffffffff00000000ffffffff
+-- 000:0032211b99998a872542875343ffffff
 -- 001:0123456789abcdeffedcba9876543210
--- 002:0123456789abcdef0123456789abcdef
+-- 002:012389abd9efcdef01234567ffae6789
+-- 003:04550008766660278246673747577620
 -- </WAVES>
 
 -- <SFX>
--- 000:000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000304000000000
+-- 000:80031017200040009000f000f00060006000600060006000500050005000400040004000400050006000700080009000a000b000c000c000d000d000108000000000
+-- 001:306fa0c220a7f017f010f000f032f023f023f053f064f0d3f0d5f086f0a3f087f063f057f003f007f003f003f004f004f000f000f000f000f000f000c61000000000
+-- 003:010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100010001000100000000000000
 -- </SFX>
 
 -- <TRACKS>
