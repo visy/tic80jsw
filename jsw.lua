@@ -1475,6 +1475,7 @@ richman = {
 
 player = {
 	jumpframe=0,
+	onramp=false,
 	jumpdt=0,
 	start_y = 0,
 	jumping=false,
@@ -1559,7 +1560,32 @@ anim_frames = {
 	{0,1,2,3,4,5,6,7}
 }
 
+roomstart = {
+x=0,
+y=0,
+}
+
+death = false
+
+function die()
+	death = true
+	player.lives=player.lives-1
+	if (player.lives < 0) then
+		exit()
+	end
+
+	loadroom(roomnumber)
+end
+
 function loadroom(r)
+		if (death == false) then
+	 	roomstart.x = player.x
+ 		roomstart.y = player.y
+		else
+			player.x = roomstart.x
+			player.y = roomstart.y
+			death = false
+		end
 		cls(0)
 		room.items = {}
 		room.entities = {}
@@ -1694,7 +1720,7 @@ function loadroom(r)
 		 local y = 0
 			room.tilemap[40] = 2
 			for x = 0, room.ramp_len-1, 1 do
-				room.tilemap[(yy-y)*32+(xx-x+1)] = 5
+				room.tilemap[(yy-y)*32+(xx-x+1)] = 6
 				y = y + 1
 			end
 		end
@@ -1702,7 +1728,7 @@ function loadroom(r)
 		if (room.ramp_dir == 1) then
 			local y = 0
 			for x = 0, room.ramp_len-1 do
-				room.tilemap[(yy+y)*32+(xx+x+1)] = 5
+				room.tilemap[(yy+y)*32+(xx+x+1)] = 6
 				y = y - 1
 			end
 		end
@@ -1883,6 +1909,15 @@ function tickentities(dt)
 	for i = 1, #room.entities do
 		local e = room.entities[i]
 
+		if (e.hx ~= nil) then
+			local px = player.x
+			local py = player.y
+		
+			if (px>=e.hx+16 and px+8<(e.hx+32)) and (py>=e.hy and py<(e.hy+16)) then
+				die()
+			end
+		end
+
 		e.animt = e.animt+dt
 		
 		if (e.animt > 70) then
@@ -1913,7 +1948,8 @@ function tickentities(dt)
 			end
 			e.acc = 0
 		end
-		
+
+	
 		if (e.guardian_type == 1) then
 			
 			e.hx = e.x-20+(1-e.dir)*8
@@ -1924,8 +1960,8 @@ function tickentities(dt)
 			e.hx = e.x-16
 			e.hy = e.y
 		end
-
 	end
+
 end
 
 jumptable = {
@@ -1954,7 +1990,7 @@ function jump(dt)
 			 xxx = -1
 			end
 
-			if (tile(player.head_x,player.head_y) == 2 or tile(player.head_x-xxx,player.head_y) == 2) then
+			if (tile(player.head_x,player.head_y) == 2 or tile(player.head_x,player.head_y) == 2) or (tile(player.head_x2,player.head_y) == 2 or tile(player.head_x2,player.head_y) == 2) and player.onramp == false then
 				player.jumping=false
 				player.jumpframe=0
 				player.falling=true
@@ -1975,28 +2011,41 @@ function coll(x,y)
 end
 
 function tickplayer(dt)
-	local tile_x = math.floor((4*(1-player.dir)+player.x+player.dir*2)/8)
+	local tile_x = math.floor((player.x+8)/8)
+	local tile_x2 = math.floor((player.x)/8)
  local tile_y = math.floor((player.y+16)/8)
 
-	local head_x = math.floor((8*(1-player.dir)+player.x+player.dir*2)/8)
+	local head_x = math.floor((player.x+8)/8)
+	local head_x2 = math.floor((player.x)/8)
  local head_y = math.floor((player.y)/8)
 
 	player.tile_x = tile_x
+	player.tile_x2 = tile_x2
 	player.tile_y = tile_y
 	player.head_x = head_x
+	player.head_x2 = head_x2
 	player.head_y = head_y
 
 	jump(dt)
 	
 	player.moving = false
 
+	if tile(tile_x,tile_y) == 6 or tile(tile_x2,tile_y) == 6 then
+		player.onramp = true
+	else
+		player.onramp = false
+
+	end
 
 	if btn(2) then 
 		player.dir = 1 
+
+	 head_x = math.floor((((player.x)-dt*0.03)+8)/8)
+	 head_x2 = math.floor(((player.x)-dt*0.03)/8)
 		
 		local tt = tile(head_x,head_y)
-		local tt2 = tile(head_x,head_y)
-  local cc = tt~=2 and tt~=2
+		local tt2 = tile(head_x2,head_y)
+  local cc = tt~=2 and tt2~=2
 		
 		if (cc == true) then
  		player.x = player.x - dt*0.03 
@@ -2009,14 +2058,17 @@ function tickplayer(dt)
 			if (xscrollf > 8) then xscrollf = 8 end
 		 xscroll = math.floor(xscrollf)
 		end
-
 	end
 
 	if btn(3) then 
 		player.dir = 0 
 
+	 head_x = math.floor((((player.x)+dt*0.03)+8)/8)
+	 head_x2 = math.floor(((player.x)+dt*0.03)/8)
+		
 		local tt = tile(head_x,head_y)
-  local cc = tt~=2
+		local tt2 = tile(head_x2,head_y)
+  local cc = tt~=2 and tt2~=2
 		
 		if (cc == true) then
  		player.x = player.x + dt*0.03 
@@ -2030,6 +2082,10 @@ function tickplayer(dt)
 			if (xscrollf < -24) then xscrollf = -24 end
 
 		 xscroll = math.floor(xscrollf)
+		end
+
+		if player.onramp then
+ 		player.y = player.y-0.03*dt
 		end
 
 	end
@@ -2049,9 +2105,11 @@ function tickplayer(dt)
 		local s = false
 		local s2 = false
 
-		s = coll(tile_x,tile_y)
+		s = tile(tile_x,tile_y) == 0
+		s2 = tile(tile_x2,tile_y) == 0
 
-		if s==false then
+		if s==false or s2==false then
+		
 			if (player.falling) then
 				player.falling=false
 				player.y=math.floor(player.y/8)*8
@@ -2064,42 +2122,46 @@ function tickplayer(dt)
  end
 
 	s = coll(tile_x,tile_y)
+	s2 = coll(tile_x2,tile_y)
 
-	if (player.falling == false and s == true and (player.jumpframe > 14 or player.jumping == false)) then
+	if (player.falling == false and (s == true or s2==true) and (player.jumpframe > 14)) then
+
+		if (player.onramp == false) then
 		player.falling=true
 		player.fallframes = 0
+		end
 	end
 
 
 	-- room change
 
-	if (player.x < 0) then
+	if (player.x < 1) then
 		roomnumber = room.exit_l
-		loadroom(roomnumber)
 		player.x = 244
 		xscrollf = -24
 		xscroll = -24
+		loadroom(roomnumber)
 	end
 
 	if (player.x > 240+8) then
 		roomnumber = room.exit_r
-		loadroom(roomnumber)
 		player.x = 4
 		xscrollf = 8
 		xscroll = 8
+		loadroom(roomnumber)
 	end
 
 	if (player.y > 128-16) then
 		roomnumber = room.exit_d
-		loadroom(roomnumber)
 		player.y = 4
+		loadroom(roomnumber)
 	end
 
 	if (player.y < 0) then
 		roomnumber = room.exit_u
-		loadroom(roomnumber)
 		player.y = 128-24
 		player.jumping = false
+		loadroom(roomnumber)
 	end
 
 	if btn(4) then 
@@ -2115,9 +2177,10 @@ function tickplayer(dt)
 			local tt = 0
 			local tt2 = 0
 
-				tt = tile(head_x,head_y-1)
+			tt = tile(head_x,head_y-1)
+			tt2 = tile(head_x2,head_y-1)
 
-			if (tt == 0 or tt == 1 or tt==5 or head_y<1) then
+			if (tt == 0 or tt == 1 or tt==5 or head_y<1) and (tt2 == 0 or tt2 == 1 or tt2==5 or head_y<1) then
 			player.jumping = true
 			player.jumpframe = 0
 			player.start_y = player.y
@@ -2198,11 +2261,14 @@ end
 
 function drawplayer()
 	local o = 1+player.dir*128+player.frame*32
+
+	xso = player.frame*2
+
 	for y = 0, 15 do
 		for x = 0, 7 do
 		 local cc = 0
 			cc = (willy_gfx[o] & 1<<(7-x))>>7-x
-			sset((32*8)+x,y,cc*7)
+			sset((32*8)+x-xso,y,cc*7)
 		end
 
 		o = o + 1
@@ -2210,12 +2276,12 @@ function drawplayer()
 		for x = 0,7 do
 			local cc = 0
 			cc = (willy_gfx[o] & 1<<(7-x))>>7-x
-			sset((32*8)+8+x,y,cc*7)
+			sset((32*8)+8+x-xso,y,cc*7)
 		end
 
 		o = o + 1
 	end
-	spr(32,xscroll+player.x-(player.frame*2),player.y,0,1,0,0,2,2)
+	spr(32,xscroll+player.x,player.y,0,1,0,0,2,2)
 
  if debug	== true then
 		local co = 6
@@ -2224,7 +2290,9 @@ function drawplayer()
 		rectb(xscroll+player.x+player.dir*2,player.y,8,16,co)
 
 		rectb(xscroll+player.tile_x*8,player.tile_y*8,8,8,5)
+		rectb(xscroll+player.tile_x2*8,player.tile_y*8,8,8,5)
 		rectb(xscroll+player.head_x*8,player.head_y*8,8,8,2)
+		rectb(xscroll+player.head_x2*8,player.head_y*8,8,8,2)
  end
 
 end
