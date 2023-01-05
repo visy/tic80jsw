@@ -1479,10 +1479,10 @@ player = {
 	jumpdt=0,
 	start_y = 0,
 	jumping=false,
-	falling=false,
+	falling=true,
 	fallframes=0,
-	x = 164,
-	y = 104,
+	x = 24,
+	y = 64,
 	dir = 0,
 	moving=false,
 	frame = 0,
@@ -1570,6 +1570,7 @@ death = false
 function die()
 	death = true
 	player.lives=player.lives-1
+	player.falling = true
 	if (player.lives < 0) then
 		exit()
 	end
@@ -2112,6 +2113,11 @@ function tickplayer(dt)
 		
 			if (player.falling) then
 				player.falling=false
+				if (player.fallframes>64) then
+					die()
+				end
+				player.fallframes = 0
+
 				player.y=math.floor(player.y/8)*8
 			end
 			if (player.jumpframe > 14) then
@@ -2380,7 +2386,7 @@ function drawentities(dt)
 			end
 			poke4(PALETTE_MAP * 2 + white, white)
 
-		 if debug	== true then
+		 if debug	== true and e.hx ~= nil then
 		 	rectb(xscroll+e.hx+16,e.hy,16,16,2)
 			end
 
