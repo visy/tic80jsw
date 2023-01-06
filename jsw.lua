@@ -1482,7 +1482,7 @@ player = {
 	falling=true,
 	fallframes=0,
 	x = 24,
-	y = 64,
+	y = 24,
 	dir = 0,
 	moving=false,
 	frame = 0,
@@ -1910,15 +1910,6 @@ function tickentities(dt)
 	for i = 1, #room.entities do
 		local e = room.entities[i]
 
-		if (e.hx ~= nil) then
-			local px = player.x
-			local py = player.y
-		
-			if (px>=e.hx+16 and px+8<(e.hx+32)) and (py>=e.hy and py<(e.hy+16)) then
-				die()
-			end
-		end
-
 		e.animt = e.animt+dt
 		
 		if (e.animt > 70) then
@@ -2259,13 +2250,16 @@ function update(dt)
 end
 
 function draw()
-	drawroom()
+	cls(0)
 	drawentities()
-	drawplayer()
+	drawroom(3)
+	drawplayer(0)
+	drawroom(0)
  drawconveyor()
+	drawplayer(1)
 end
 
-function drawplayer()
+function drawplayer(pass)
 	local o = 1+player.dir*128+player.frame*32
 
 	xso = player.frame*2
@@ -2287,7 +2281,25 @@ function drawplayer()
 
 		o = o + 1
 	end
-	spr(32,xscroll+player.x,player.y,0,1,0,0,2,2)
+
+ if (pass == 0) then
+	for yy = 0,15 do
+		for xx = 0,15 do
+			local sc = pix(xscroll+player.x+xx,player.y+yy)
+			local cc = sget(32*8+xx,yy)
+			if (cc ~=0) then 
+		 	local sc = pix(xscroll+player.x+xx,player.y+yy)
+				if (sc > 0) then die() end
+				pix(xscroll+player.x+xx,player.y+yy,cc) 
+		
+			end
+		end
+	end
+	else
+ 	spr(32,xscroll+player.x,player.y,0,1,0,0,2,2)
+
+	end
+
 
  if debug	== true then
 		local co = 6
@@ -2429,8 +2441,7 @@ function cprint(s,x,y,c)
 	end
 end
 
-function drawroom()
-	rect(0,0,240,128,room.border)
+function drawroom(filt)
  -- tile gfx defined, draw room
 	for i=0,511 do
 		local tile = room.tilemap[i+1]
@@ -2438,21 +2449,35 @@ function drawroom()
 		local x = (i%32)
 		local y = math.floor(i/32)
 
-		if tile == 0 then
-		spr(0,xscroll+x*8,yscroll+y*8)
-		end
+		if filt == 0 then 
+	
+			if tile == 0 then
+			spr(0,xscroll+x*8,yscroll+y*8,0)
+			end
+	
+			if tile == 1 then
+			spr(1,xscroll+x*8,yscroll+y*8,0)
+			end
+	
+			if tile == 2 then
+			spr(2,xscroll+x*8,yscroll+y*8,0)
+			end
+	
+			if tile == 3 then
+			spr(3,xscroll+x*8,yscroll+y*8,0)
+			end
+		else
 
-		if tile == 1 then
-		spr(1,xscroll+x*8,yscroll+y*8)
+		if filt == 3 then 
+			if tile == 3 then
+			spr(3,xscroll+x*8,yscroll+y*8,0)
+			end
 		end
+		end
+	end
 
-		if tile == 2 then
-		spr(2,xscroll+x*8,yscroll+y*8)
-		end
-
-		if tile == 3 then
-		spr(3,xscroll+x*8,yscroll+y*8)
-		end
+	if (filt == 3) then
+	 return
 	end
 
 	-- ramp
